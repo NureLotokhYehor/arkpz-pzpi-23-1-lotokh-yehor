@@ -1,0 +1,381 @@
+МІНІСТЕРСТВО ОСВІТИ І НАУКИ УКРАЇНИ
+ХАРКІВСЬКИЙ НАЦІОНАЛЬНИЙ УНІВЕРСИТЕТ РАДІОЕЛЕКТРОНІКИ
+
+
+Кафедра «Програмної інженерії»
+
+
+
+
+
+
+ЗВІТ
+
+З Лабораторної роботи № 2 з дисципліни
+«Аналіз та рефакторинг коду»
+
+
+
+
+
+
+
+
+
+Виконав
+ст. гр. ПЗПІ-23-1
+Лотох Єгор	Перевірив
+ас. викладач каф. ПІ Дашенков Дмитро Сергійович
+
+
+
+
+
+
+
+
+Харків 2025
+ 
+1	Вступ
+
+1.1	Тема
+
+
+Розробка бази даних для серверної частини програмної системи та прикладного програмного інтерфейсу (АРІ).
+
+1.2	Мета
+
+Розробити базу даних для серверної частини програмної системи та прикладного програмного інтерфейсу.
+
+2	Розробка діаграм
+
+2.1	Розробка UML діаграми прецедентів для серверної частини системи
+
+У системі VetMonitor основними акторами є User та Admin, що відповідає структурі програмної системи та її функціональним вимогам.
+Актор User представляє власника тварини або будь-якого користувача, який має доступ до персональної інформації про стан здоров’я тварини. Актор Admin виконує роль адміністратора ветеринарної клініки та має розширені можливості керування даними системи.
+Актор User має доступ до базового функціоналу системи, який включає реєстрацію, авторизацію та взаємодію з персональними даними тварини. Користувач може переглядати історію здоров’я, отримувати рекомендації на основі отриманих сенсорних даних, переглядати графіки та звіти, а також отримувати повідомлення про критичні зміни у стані тварини. Таким чином, User взаємодіє лише з тими частинами системи, які стосуються індивідуального моніторингу його тварини.
+Актор Admin має ширший набір доступних прецедентів, оскільки відповідає за підтримку роботи всієї системи в клініці. Адміністратор виконує CRUD-операції над даними про користувачів та даними про тварин, керує записами про фізіологічні показники, видає або обмежує доступ користувачам, а також контролює загальний стан системи та коректність внесених даних. Саме Admin відповідає за збереження консистентності даних, оновлення записів та загальне адміністрування VetMonitor.
+
+
+ 
+Рис. 2.1 – UML діаграма прецедентів
+
+2.2	Розробка ER діаграми даних
+
+Для побудови бази даних системи VetMonitor було розроблено структуру, яка забезпечує зберігання інформації про користувачів, тварин, показники здоров’я, рекомендації та сповіщення. Центральну роль відіграє таблиця User, яка об’єднує всі дані користувача та пов’язана з таблицею Animal, що містить інформацію про тварин. Для кожної тварини можуть зберігатися показники здоров’я, автоматично згенеровані рекомендації та надіслані сповіщення. (див. рис. 2.2).
+
+ 
+Рис. 2.2 – ER діаграма даних
+
+
+3.	Розробка бази даних
+
+3.1	Розроблення бази даних програмної системи Код наведено у додатку А
+
+Розробка бази даних системи VetMonitor здійснюється з урахуванням вимог щодо надійного зберігання даних про користувачів, тварин і показників їхнього здоров’я. Для цього використовується MongoDB - документно-орієнтована база даних, що забезпечує гнучкість структури, швидку обробку даних від IoT-пристроїв та зручність масштабування.
+Структура бази даних системи складається з наступних основних колекцій:
+3.1.1	Колекція users містить інформацію про всіх користувачів системи, включаючи власників тварин та адміністраторів. Кожен документ містить ім’я, прізвище, електронну пошту, пароль та роль користувача. Поле role визначає рівень доступу: власник тварини (owner) або адміністратор системи (admin). Адміністратори мають розширені можливості для управління даними та налаштування роботи системи.
+3.1.2	Колекція animal містить відомості про тварин, прив’язаних до конкретних користувачів через поле user_id. Для кожної тварини зберігається вид, кличка, порода, вік та додаткові ветеринарні дані.
+3.1.3	Колекція health_data зберігає фізіологічні параметри тварин, що надходять від IoT-пристроїв. До них належать температура тіла, пульс, рівень активності та інші показники. Кожен запис містить дату і час вимірювання та посилання на відповідну тварину через animal_id.
+3.1.4	Колекція recommendation містить автоматично згенеровані рекомендації щодо стану здоров’я тварини. Рекомендації формуються на основі алгоритмів аналізу даних та прив’язані до конкретної тварини за полем animal_id. Вони можуть стосуватися догляду, профілактики або попередження про відхилення від норми.
+3.1.5	Колекція otification слугує для зберігання інформації про сповіщення, які система надсилає користувачу. Це можуть бути попередження про критичні зміни температури, підвищений пульс, низьку активність або інші ризикові стани. Кожне сповіщення пов’язано з користувачем (user_id) та тваринною (animal_id).
+Зв’язки між колекціями
+Система VetMonitor працює так: користувачі додають своїх тварин і отримують дані про стан здоров’я через IoT-пристрої. Дані про температуру, пульс та інші показники тварин надсилаються на сервер у реальному часі. Сервер зберігає ці дані у відповідних колекціях, обробляє їх за допомогою алгоритмів та формує автоматичні рекомендації та сповіщення для користувачів. На основі цих даних система може показувати графіки здоров’я тварин, відправляти попередження про критичні зміни та надавати персоналізовані поради щодо догляду за тваринами.
+
+4	Розробка серверної частини
+
+4.2	Розробка АРІ для взаємодії серверної частини з клієнтами
+Для роботи серверної частини було створено набір маршрутів і контролерів, які відповідають за реєстрацію, авторизацію, активацію облікових записів та підтримку користувацьких сесій.
+4.2.1	Приклад маршрутів API:
+Маршрути авторизацїі(Маршрути авторизації (auth.js)
+•	POST /auth/register - реєстрація нового користувача. Створює профіль користувача у базі.
+•	POST /auth/login - авторизація користувача за email і паролем.
+•	POST /auth/logout - завершення сесії користувача.
+•	GET /auth/profile - повертає дані авторизованого користувача.
+Маршрути управління тваринами (animals.js)
+•	POST /animals - створення картки тварини користувача.
+•	GET /animals - отримання списку тварин, прив’язаних до користувача.
+•	GET /animals/:id - перегляд інформації про конкретну тварину.
+•	PUT /animals/:id - редагування даних про тварину.
+•	DELETE /animals/:id - видалення тварини.
+Маршрути фізіологічних вимірювань (measurements.js)
+•	Ці маршрути використовуються як веб-клієнтом, так і IoT-сенсорами.
+•	POST /measurements - приймає дані від сенсорів (температура тіла, пульс, температура в клітці). Система перевіряє валідність даних і прив'язує вимірювання до animal_id.
+•	GET /measurements/:animalId - повертає історію вимірювань у вигляді списку (з можливістю фільтрації за датою).
+•	GET /measurements/:animalId/latest - надсилає останні отримані значення, що використовуються для показу "поточний стан тварини".
+Маршрути рекомендацій (recommendations.js)
+•	GET /recommendations/:animalId - отримання рекомендацій, згенерованих алгоритмами аналізу здоров’я.
+•	POST /recommendations - створення рекомендації вручну (доступно ветеринару або адміну).
+•	DELETE /recommendations/:id - видалення рекомендації.
+Маршрути сповіщень (notifications.js)
+•	GET /notifications - повертає всі сповіщення користувача (критичні зміни стану, попередження).
+•	POST /notifications/send - створення та відправка push-сповіщення.
+•	PUT /notifications/:id/read - позначення сповіщення як переглянутого.
+4.2.2	Контролери:
+eventsControlleauthController.js
+Відповідає за роботу з обліковими записами користувачів:
+•	Реєстрація та хешування паролів;
+•	Авторизація та генерація jwt-токенів;
+•	Валідація доступу через middleware;
+•	Повернення профілю користувача.
+animalController.js
+Здійснює CRUD-операції з даними про тварин:
+•	Створення картки тварини;
+•	Редагування і видалення;
+•	Отримання списку та інформації про окрему тварину;
+•	Перевірка прав доступу (кожна тварина належить конкретному user_id).
+measurementController.js
+Обробляє фізіологічні вимірювання, які надходять від сенсорів:
+•	Приймання масиву даних у реальному часі;
+•	Збереження вимірювань у колекції measurement;
+•	Визначення критичних значень (пульс, температура);
+•	Запуск механізму сповіщень (notificationcontroller);
+•	Видача історії та останніх даних.
+recommendationController.js
+Генерує та повертає рекомендації щодо здоров’я:
+•	Формує поради на основі аналізу вимірювань;
+•	Викликає алгоритми з колекції healthalgorithm;
+•	Дозволяє адміну або ветеринару створювати рекомендації вручну.
+notificationcontroller.js
+Відповідає за увесь процес сповіщень:
+•	Формування критичних alert-повідомлень (підвищення/зниження температури, тахікардія, брадикардія);
+•	Надсилання push-повідомлень на мобільний додаток;
+•	Збереження історії сповіщень у базі;
+•	Позначення сповіщень як переглянутих.
+4.2.3	Підсумок роботи API
+Розроблене API забезпечує повний цикл взаємодії між клієнтом, сервером та IoT-сенсорами.
+Система дозволяє:
+•	Реєструвати та авторизувати користувачів;
+•	Керувати інформацією про тварин;
+•	Отримувати та зберігати вимірювання у реальному часі;
+•	Генерувати рекомендації на основі алгоритмів аналізу;
+•	Надсилати критичні сповіщення;
+•	Забезпечувати безпечний доступ до даних.
+Таким чином серверна частина VetMonitor забезпечує надійну та масштабовану обробку всіх процесів, пов'язаних із моніторингом фізіологічного стану тварин.
+Код реалізації наведено у додатку Б
+Тепер використовуючи створене АРІ було розроблено програмну реалізацію (див. рис. 4.1).
+
+ 
+Рис. 4.1 – програмна реалізація для АРІ
+5	Висновок
+
+У процесі виконання лабораторної роботи було розроблено UML-діаграму прецедентів, що описує основні можливості серверної частини аналітичної системи для відеогри. На основі визначених прецедентів була створена ER-діаграма, яка відобразила структуру даних та взаємозв’язки між основними сутностями системи. Після розробки ER-моделі була спроєктована і реалізована база даних, що зберігає події від гри, інформацію про гравців та аналітичні показники.
+На основі створеної бази даних було побудовано діаграму структури, яка відображає таблиці та їхні ключові зв’язки. Далі було розроблено серверну логіку, що забезпечує обробку подій від гри, а також механізми авторизації адміністратора та формування статистики. Було реалізовано API, яке дозволяє клієнтській частині отримувати аналітичні дані, включно з агрегованою статистикою та деталізованою інформацією про діяльність гравців. Після створення АРІ була виконана програмна реалізація серверної частини системи.
+ 
+Додаток А
+
+1  const mongoose = require('mongoose');
+2
+3  mongoose.connect('mongodb://localhost:27017/vetmonitor', {
+4      useNewUrlParser: true,
+5      useUnifiedTopology: true
+6  }).then(() => console.log('MongoDB connected'))
+7    .catch(err => console.log('MongoDB connection error:', err));
+8
+9  // Колекція користувачів (User)
+10 const userSchema = new mongoose.Schema({
+11     firstName: { type: String, required: true },
+12     lastName: { type: String, required: true },
+13     email: { type: String, required: true, unique: true },
+14     password: { type: String, required: true },
+15     phone: String,
+16     dateOfBirth: Date,
+17     gender: { type: String, enum: ['Male', 'Female', 'Other'] },
+18     language: { type: String, enum: ['Ukrainian', 'English'], default: 'Ukrainian' }
+19 }, { timestamps: true });
+20 const User = mongoose.model('User', userSchema);
+21
+22 // Колекція даних про здоров'я тварин (HealthData)
+23 const healthDataSchema = new mongoose.Schema({
+24     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+25     pulse: Number,
+26     temperature: Number,
+27     activityLevel: Number,
+28     stressLevel: Number,
+29     recordedAt: { type: Date, default: Date.now }
+30 }, { timestamps: true });
+31 const HealthData = mongoose.model('HealthData', healthDataSchema);
+32
+33 // Колекція рекомендацій (Recommendation)
+34 const recommendationSchema = new mongoose.Schema({
+35     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+36     recommendationText: String,
+37     createdAt: { type: Date, default: Date.now }
+38 }, { timestamps: true });
+39 const Recommendation = mongoose.model('Recommendation', recommendationSchema);
+40
+41 // Колекція сповіщень (Notification)
+42 const notificationSchema = new mongoose.Schema({
+43     userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+44     message: String,
+45     type: { type: String, enum: ['Reminder', 'Alert', 'Recommendation'] },
+46     sentAt: { type: Date, default: Date.now },
+47     status: { type: String, enum: ['Sent', 'Pending', 'Failed'], default: 'Pending' }
+48 }, { timestamps: true });
+49 const Notification = mongoose.model('Notification', notificationSchema);
+50
+51 // Колекція алгоритмів здоров'я (HealthAlgorithm)
+52 const healthAlgorithmSchema = new mongoose.Schema({
+53     name: { type: String, required: true },
+54     description: String,
+55     thresholdPulse: Number,
+56     thresholdTemperature: Number,
+57     thresholdActivity: Number,
+58     createdAt: { type: Date, default: Date.now }
+59 }, { timestamps: true });
+60 const HealthAlgorithm = mongoose.model('HealthAlgorithm', healthAlgorithmSchema);
+61
+62 // Колекція адміністраторів (Admin)
+63 const adminSchema = new mongoose.Schema({
+64     firstName: { type: String, required: true },
+65     lastName: { type: String, required: true },
+66     email: { type: String, required: true, unique: true },
+67     password: { type: String, required: true },
+68     role: { type: String, enum: ['Admin', 'SuperAdmin'], default: 'Admin' },
+69     createdAt: { type: Date, default: Date.now }
+70 }, { timestamps: true });
+71 const Admin = mongoose.model('Admin', adminSchema);
+72
+73 console.log('All schemas are defined successfully'); 
+Додаток Б
+
+
+1.  // server.js
+2.  const express = require('express');
+3.  const mongoose = require('mongoose');
+4.  const dotenv = require('dotenv');
+5.  const authRoutes = require('./routes/auth');
+6.  const animalRoutes = require('./routes/animals');
+7.  const measurementRoutes = require('./routes/measurements');
+8.  const recommendationRoutes = require('./routes/recommendations');
+9.  const notificationRoutes = require('./routes/notifications');
+10. const authMiddleware = require('./middleware/authMiddleware');
+11.
+12. dotenv.config();
+13. const app = express();
+14. app.use(express.json());
+15.
+16. // Підключення до бази даних MongoDB
+17. mongoose.connect(process.env.MONGO_URI, {
+18.   useNewUrlParser: true,
+19.   useUnifiedTopology: true
+20. }).then(() => console.log('MongoDB connected'))
+21.   .catch(err => console.error('MongoDB connection error:', err));
+22.
+23. // Маршрути
+24. app.use('/api/auth', authRoutes);
+25. app.use('/api/animals', authMiddleware, animalRoutes);
+26. app.use('/api/measurements', authMiddleware, measurementRoutes);
+27. app.use('/api/recommendations', authMiddleware, recommendationRoutes);
+28. app.use('/api/notifications', authMiddleware, notificationRoutes);
+29.
+30. const PORT = process.env.PORT || 5000;
+31. app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+32.
+33.
+34. // routes/auth.js
+35. const express = require('express');
+36. const router = express.Router();
+37. const { registerUser, loginUser } = require('../controllers/authController');
+38.
+39. router.post('/register', registerUser);
+40. router.post('/login', loginUser);
+41.
+42. module.exports = router;
+43.
+44.
+45. // routes/animals.js
+46. const express = require('express');
+47. const router = express.Router();
+48. const { getAnimals, createAnimal, updateAnimal, deleteAnimal } = require('../controllers/animalController');
+49.
+50. router.get('/', getAnimals);
+51. router.post('/', createAnimal);
+52. router.put('/:id', updateAnimal);
+53. router.delete('/:id', deleteAnimal);
+54.
+55. module.exports = router;
+56.
+57.
+58. // routes/measurements.js
+59. const express = require('express');
+60. const router = express.Router();
+61. const { getMeasurements, createMeasurement } = require('../controllers/measurementController');
+62.
+63. router.get('/', getMeasurements);
+64. router.post('/', createMeasurement);
+65.
+66. module.exports = router;
+67.
+68.
+69. // routes/recommendations.js
+70. const express = require('express');
+71. const router = express.Router();
+72. const { getRecommendations } = require('../controllers/recommendationController');
+73.
+74. router.get('/', getRecommendations);
+75.
+76. module.exports = router;
+77.
+78.
+79. // routes/notifications.js
+80. const express = require('express');
+81. const router = express.Router();
+82. const { getNotifications } = require('../controllers/notificationController');
+83.
+84. router.get('/', getNotifications);
+85.
+86. module.exports = router;
+87.
+88.
+89. // middleware/authMiddleware.js
+90. const jwt = require('jsonwebtoken');
+91.
+92. module.exports = function(req, res, next) {
+93.   const token = req.header('Authorization')?.split(' ')[1];
+94.   if(!token) return res.status(401).json({ message: 'No token, authorization denied' });
+95.   
+96.   try {
+97.     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+98.     req.user = decoded.user;
+99.     next();
+100.  } catch(err) {
+101.    res.status(401).json({ message: 'Token is not valid' });
+102.  }
+103. };
+104.
+105.
+106. // controllers/authController.js
+107. const User = require('../models/User');
+108. const bcrypt = require('bcryptjs');
+109. const jwt = require('jsonwebtoken');
+110.
+111. exports.registerUser = async (req, res) => {
+112.   const { name, email, password } = req.body;
+113.   try {
+114.     let user = await User.findOne({ email });
+115.     if(user) return res.status(400).json({ message: 'User already exists' });
+116.     user = new User({ name, email, password: await bcrypt.hash(password, 10) });
+117.     await user.save();
+118.     const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET, { expiresIn: '1h' });
+119.     res.json({ token });
+120.   } catch(err) {
+121.     res.status(500).send('Server error');
+122.   }
+123. };
+124.
+125. exports.loginUser = async (req, res) => {
+126.   const { email, password } = req.body;
+127.   try {
+128.     const user = await User.findOne({ email });
+129.     if(!user) return res.status(400).json({ message: 'Invalid credentials' });
+130.     const isMatch = await bcrypt.compare(password, user.password);
+131.     if(!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
+132.     const token = jwt.sign({ user: { id: user.id } }, process.env.JWT_SECRET, { expiresIn: '1h' });
+133.     res.json({ token });
+134.   } catch(err) {
+135.     res.status(500).send('Server error');
+136.   }
+137. };
+138.
+139. // Інші контролери (animalController, measurementController, recommendationController, notificationController) аналогічно створюються з CRUD операціями та логікою отримання даних
