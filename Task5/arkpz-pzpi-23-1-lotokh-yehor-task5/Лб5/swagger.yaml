@@ -1,0 +1,180 @@
+openapi: 3.0.3
+info:
+  title: VetMonitor API
+  description: API для програмної системи контролю стану тварин у клініках
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Локальний сервер
+tags:
+  - name: Users
+    description: Операції з користувачами
+  - name: Animals
+    description: Операції з тваринами
+  - name: HealthData
+    description: Дані про здоров'я тварин
+  - name: Recommendations
+    description: Персоналізовані рекомендації
+  - name: Notifications
+    description: Сповіщення
+
+paths:
+  /registration:
+    post:
+      tags:
+        - Users
+      summary: Реєстрація нового користувача
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "201":
+          description: Користувач створений
+        "400":
+          description: Помилка валідації
+
+  /login:
+    post:
+      tags:
+        - Users
+      summary: Авторизація користувача
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      responses:
+        "200":
+          description: Успішна авторизація
+        "400":
+          description: Невірні дані
+
+  /logout:
+    post:
+      tags:
+        - Users
+      summary: Вихід користувача
+      responses:
+        "200":
+          description: Користувач вийшов
+
+  /animals:
+    get:
+      tags:
+        - Animals
+      summary: Отримати список усіх тварин
+      responses:
+        "200":
+          description: Список тварин
+
+    post:
+      tags:
+        - Animals
+      summary: Додати нову тварину
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - species
+              properties:
+                name:
+                  type: string
+                species:
+                  type: string
+                ownerId:
+                  type: string
+      responses:
+        "201":
+          description: Тварина додана
+        "400":
+          description: Помилка додавання
+
+  /healthdata:
+    post:
+      tags:
+        - HealthData
+      summary: Додати дані про здоров'я тварини
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - animalId
+                - pulse
+                - temperature
+              properties:
+                animalId:
+                  type: string
+                pulse:
+                  type: number
+                temperature:
+                  type: number
+                activityLevel:
+                  type: number
+                stressLevel:
+                  type: number
+      responses:
+        "201":
+          description: Дані збережено
+        "400":
+          description: Помилка додавання
+
+  /recommendations:
+    get:
+      tags:
+        - Recommendations
+      summary: Отримати рекомендації для тварини
+      parameters:
+        - in: query
+          name: animalId
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Список рекомендацій
+        "400":
+          description: Невірний запит
+
+  /notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Отримати сповіщення користувача
+      parameters:
+        - in: query
+          name: userId
+          schema:
+            type: string
+          required: true
+      responses:
+        "200":
+          description: Список сповіщень
+        "400":
+          description: Невірний запит
