@@ -380,4 +380,5 @@ notificationcontroller.js
 138.
 139. // Інші контролери (animalController, measurementController, recommendationController, notificationController) аналогічно створюються з CRUD операціями та логікою отримання даних
 
-Посилання на відео: https://youtu.be/DtRY-wpmne4
+Посилання на відео: https://youtu.be/m-dgakvJgZc
+
